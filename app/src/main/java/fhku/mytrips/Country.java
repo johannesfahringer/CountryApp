@@ -8,11 +8,13 @@ public class Country {
     private int id;
     private double latitude;
     private double longitude;
+    private String countryName;
 
-    public Country(int id, double longitude, double latitude) {
+    public Country(int id, double longitude, double latitude, String countryName) {
         this.id = id;
         this.latitude=latitude;
         this.longitude=longitude;
+        this.setCountryName(countryName);
 
     }
 
@@ -48,6 +50,14 @@ public class Country {
 
     public void setLongitude(double longitude) {
         this.longitude = longitude;
+    }
+
+    public String getCountryName() {
+        return countryName;
+    }
+
+    public void setCountryName(String countryName) {
+        this.countryName = countryName;
     }
 }
 

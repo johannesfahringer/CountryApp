@@ -24,6 +24,7 @@ public class Database extends SQLiteOpenHelper{
     public static final String KEY_ID = "id";
     public static final String KEY_LONGITUDE = "longitude";
     public static final String KEY_LATITUDE = "latitude";
+    public static final String KEY_COUNTRYNAME = "countryname";
 
     public Database(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -38,7 +39,8 @@ public class Database extends SQLiteOpenHelper{
         db.execSQL("CREATE TABLE " + TABLE_COUNTRY + "(" +
                 KEY_ID + " INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
                 KEY_LATITUDE + " REAL, " +
-                KEY_LONGITUDE + " REAL)"
+                KEY_LONGITUDE + " REAL, " +
+                KEY_COUNTRYNAME + " TEXT )"
         );
 
     }
@@ -49,20 +51,22 @@ public class Database extends SQLiteOpenHelper{
         onCreate(db);
     }
 
-    public boolean insertCountry(double latitude, double longitude) {
+    public boolean insertCountry(double latitude, double longitude, String countryName) {
         SQLiteDatabase db = getWritableDatabase();
         ContentValues contentValues = new ContentValues();
         contentValues.put(KEY_LATITUDE, latitude);
         contentValues.put(KEY_LONGITUDE, longitude);
+        contentValues.put(KEY_COUNTRYNAME, countryName);
         db.insert(TABLE_COUNTRY, null, contentValues);
         return true;
     }
 
-    public boolean updatecountry(Integer id, double latitude, double longitude) {
+    public boolean updatecountry(Integer id, double latitude, double longitude, String countryName) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues contentValues = new ContentValues();
         contentValues.put(KEY_LATITUDE, latitude);
         contentValues.put(KEY_LONGITUDE, longitude);
+        contentValues.put(KEY_COUNTRYNAME, countryName);
         db.update(TABLE_COUNTRY, contentValues, KEY_ID + " = ? ", new String[] { Integer.toString(id) } );
         return true;
     }
