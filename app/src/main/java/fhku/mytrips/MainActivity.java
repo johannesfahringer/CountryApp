@@ -1,9 +1,16 @@
 package fhku.mytrips;
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.Camera;
 import android.location.Address;
 import android.location.Geocoder;
 import android.net.Uri;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.provider.Settings;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -17,6 +24,8 @@ import android.support.annotation.NonNull;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -25,7 +34,10 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import java.io.File;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 
 
@@ -45,6 +57,10 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     String countryName;
     boolean checkLocationListener;
     boolean doesExists;
+    static final int REQUEST_IMAGE_CAPTURE = 1;
+    String mCurrentPhotoPath;
+
+
 
 
 
@@ -52,9 +68,10 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        ImageView view = findViewById(R.id.picture);
         myDb = new Database(this);
         checkLocationListener = true;
+
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
         lm = (LocationManager) getSystemService(LOCATION_SERVICE);
@@ -94,6 +111,22 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
 
     }
 
+    public void checkCameraPermission(){
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                Log.i("CAMERA", "permission granted");
+
+            } else {
+                requestPermissions(new String[] {
+                        Manifest.permission.CAMERA
+                }, 1);
+            }
+
+            }
+    }
+
+
+
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -101,6 +134,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
             addLocationListener();
         }
     }
+
 
 
     public void showLocations() {
@@ -157,17 +191,50 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                 marker1.setTag(i);
                 Log.i("MarkerTag", marker1.getTag().toString());
                 map.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
-                    @Override
-                    public void onInfoWindowClick(Marker marker) {
-                        Log.i("TAG AKTUELLER MARKER ", String.valueOf(marker.getTag()));
-                        int markerTag = (int) marker.getTag();
-                        String url = "http://de.wikipedia.org/wiki/" + countryNameArray[markerTag];
-                        Intent markerIntent = new Intent(Intent.ACTION_VIEW);
-                        markerIntent.setData(Uri.parse(url));
-                        startActivity(markerIntent);
-                    }
-                });
-                //Index zählt um ein hoch
+                                                     @Override
+                                                     public void onInfoWindowClick(final Marker marker) {
+                                                         final AlertDialog dialog = new AlertDialog.Builder(MainActivity.this).create();
+                                                         dialog.setTitle("Wähle aus!");
+                                                         final int markerTag = (int) marker.getTag();
+                                                         Intent value = new Intent(getApplicationContext(), MainActivity.class);
+                                                         value.putExtra("tag1", (int) marker.getTag());
+                                                         Log.i("MarkerTag", String.valueOf(markerTag));
+
+                                                         dialog.setButton(AlertDialog.BUTTON_NEGATIVE, "INFO", new DialogInterface.OnClickListener() {
+                                                             public void onClick(DialogInterface dialog, int which) {
+                                                                 Log.i("TAG AKTUELLER MARKER ", String.valueOf(marker.getTag()));
+                                                                 String url = "http://de.wikipedia.org/wiki/" + countryNameArray[markerTag];
+                                                                 Intent markerIntent = new Intent(Intent.ACTION_VIEW);
+                                                                 markerIntent.setData(Uri.parse(url));
+                                                                 startActivity(markerIntent);
+                                                                 dialog.dismiss();
+
+                                                             }
+                                                         });
+
+                                                         dialog.setButton(AlertDialog.BUTTON_NEUTRAL, "Bildergalerie", new DialogInterface.OnClickListener() {
+                                                             public void onClick(DialogInterface dialog, int which) {
+                                                                 dialog.dismiss();
+                                                             }
+                                                         });
+
+                                                         dialog.setButton(AlertDialog.BUTTON_POSITIVE, "Kamera", new DialogInterface.OnClickListener() {
+                                                             public void onClick(DialogInterface dialog, int which) {
+                                                                     checkCameraPermission();
+                                                                     takePhoto();
+
+
+
+                                                             }
+                                                         });
+
+
+                                                         dialog.show();
+
+                                                     }
+                                                 });
+
+
                 i++;
             }
             //Ausgabe der Einträge und der Gesamtzahl der Einträge
@@ -176,8 +243,48 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         }
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+            Log.i("KKKKK","kkkkksssssss");
+            Bundle extras = data.getExtras();
+            Bitmap imageBitmap = (Bitmap) extras.get("data");
+            ImageView view = new ImageView(getApplicationContext());
+            Log.i("KLÖSDJFSKDLS", String.valueOf(view));
+            RelativeLayout relativeLayout = findViewById(R.id.layout);
+            relativeLayout.addView(view);
+            view.setImageBitmap(imageBitmap);
+            if (getIntent()!=null) {
+                Log.i("INTENT", String.valueOf(getIntent()));
+                int tag = getIntent().getIntExtra("tag1", -1);
+                Log.i("tag", String.valueOf(tag));
+            }
+        }
+    }
 
+    private File createImageFile(int tag) throws IOException {
+        // Create an image file name
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        String imageFileName = "JPEG_" + timeStamp + "_" + tag;
+        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        File image = File.createTempFile(
+                imageFileName,  /* prefix */
+                ".jpg",         /* suffix */
+                storageDir      /* directory */
 
+        );
+
+        // Save a file: path for use with ACTION_VIEW intents
+        mCurrentPhotoPath = image.getAbsolutePath();
+        return image;
+    }
+
+    private void takePhoto() {
+        Intent takePhotoIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        if (takePhotoIntent.resolveActivity(getPackageManager()) != null) {
+            startActivityForResult(takePhotoIntent, REQUEST_IMAGE_CAPTURE);
+        }
+    }
 
     public void onLocationChanged(Location location) {
         if (getCountryNames(location.getLongitude(), location.getLatitude()).equals("Ocean")) {
@@ -294,4 +401,5 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         map = googleMap;
         showLocations();
     }
+
 }

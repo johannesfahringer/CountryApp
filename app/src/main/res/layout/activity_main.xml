@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <RelativeLayout
+    android:id="@+id/layout"
     android:orientation="horizontal"
     android:layout_height="fill_parent"
     android:layout_width="fill_parent"
@@ -26,6 +27,11 @@
         android:layout_alignParentEnd="true"
         android:layout_alignParentTop="true"
         android:text="GPS SETTINGS"/>
+
+    <ImageView
+        android:id="@+id/picture"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
 
 
 </RelativeLayout>
