@@ -3,6 +3,7 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.location.Address;
 import android.location.Geocoder;
+import android.net.Uri;
 import android.provider.Settings;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -21,6 +22,7 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.io.IOException;
@@ -43,6 +45,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     String countryName;
     boolean checkLocationListener;
     boolean doesExists;
+
 
 
     @Override
@@ -150,8 +153,20 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                 MarkerOptions markerOptions = new MarkerOptions();
                 markerOptions.title(countryNameArray[i]);
                 markerOptions.position(new LatLng(latitudeArray[i], longitudeArray[i]));
-                map.addMarker(markerOptions);
-
+                final Marker marker1 = map.addMarker(markerOptions);
+                marker1.setTag(i);
+                Log.i("MarkerTag", marker1.getTag().toString());
+                map.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
+                    @Override
+                    public void onInfoWindowClick(Marker marker) {
+                        Log.i("TAG AKTUELLER MARKER ", String.valueOf(marker.getTag()));
+                        int markerTag = (int) marker.getTag();
+                        String url = "http://de.wikipedia.org/wiki/" + countryNameArray[markerTag];
+                        Intent markerIntent = new Intent(Intent.ACTION_VIEW);
+                        markerIntent.setData(Uri.parse(url));
+                        startActivity(markerIntent);
+                    }
+                });
                 //Index zählt um ein hoch
                 i++;
             }
@@ -160,6 +175,8 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
             Log.i("EINTRÄGE", String.valueOf(res.getCount()));
         }
     }
+
+
 
 
     public void onLocationChanged(Location location) {
