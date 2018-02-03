@@ -43,6 +43,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     Double longitude1;
     String countryName;
     boolean checkLocationListener;
+    boolean doesExists;
 
 
     @Override
@@ -80,7 +81,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                 Log.i("LOCATION", "permission granted");
-                lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 20000, this);
+                lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 10, 20000, this);
             } else {
                 requestPermissions(new String[] {
                         Manifest.permission.ACCESS_FINE_LOCATION
@@ -169,9 +170,11 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
    /*Dieser String soll an die Methode "getCountryNames" die aktuellen Längen/Breitengrade bei Lokationsänderung übergeben
    und erhält durch den Geocoder den Ländernamen der übergebenen Koordinaten.*/
             String currentCountryName = getCountryNames(location.getLongitude(), location.getLatitude());
-
+            Log.i("Current Country Name", currentCountryName);
             //Prüft ob ein Land bereits exestiert oder nicht.
-            boolean doesExists = false;
+
+            Log.i("Exists 1", String.valueOf(doesExists));
+            res.moveToFirst();
 
 
    /*Wenn bei Änderung der Lokation noch kein Eintrag in der Datenbank vorhanden ist,
@@ -187,6 +190,9 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                 markerOptions.position(new LatLng(location.getLatitude(), location.getLongitude()));
                 markerOptions.title(currentCountryName);
                 Log.i("LOCATION", location.getLatitude() + " : " + location.getLongitude());
+                doesExists = true;
+                Log.i("Exists 2", String.valueOf(doesExists));
+                startActivity(new Intent(this, MainActivity.class));
 
             }
 
@@ -194,33 +200,38 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
    des Landes der aktuellen Position bereits in der Datenbank vorhanden ist. Wenn dies der
    Fall ist setzt er "doesExists" auf "true" geht mit dem Curor wieder zur ersten Zeile und
    bricht die while Schleife ab.*/
-            while (res.moveToNext()) {
-                Log.i("Current country", String.valueOf(currentCountryName));
-                Log.i("Cursor String", String.valueOf(res.getString(3)));
-                if (currentCountryName.equals(res.getString(3))) {
-                    // boolean isInserted = myDb.insertCountry(location.getLatitude(), location.getLongitude(), currentCountryName);
-                    doesExists = true;
-                    res.moveToFirst();
-                    break;
+            if (res.getCount() > 0) {
+                while (res.moveToNext()) {
+                    Log.i("Current country", String.valueOf(currentCountryName));
+                    Log.i("Cursor String", String.valueOf(res.getString(3)));
+                    if (currentCountryName.equals(res.getString(3))) {
+
+                        // boolean isInserted = myDb.insertCountry(location.getLatitude(), location.getLongitude(), currentCountryName);
+                        doesExists = true;
+                        Log.i("Exists 3", String.valueOf(doesExists));
+                        res.moveToFirst();
+                        break;
+                    }
                 }
-            }
+                Log.i("Exists 4", String.valueOf(doesExists));
 
    /* Wenn der aktuelle Ländername der aktuellen Position noch nicht vorhanden ist, dann wird der Name inklusive
     Längen- und Breitengrade in die Datenbank gespeichert, ein Marker gesetzt und die Activity wird neu geladen.*/
-            if (doesExists == false) {
-                boolean isInserted = myDb.insertCountry(location.getLatitude(), location.getLongitude(), currentCountryName);
-                MarkerOptions markerOptions = new MarkerOptions();
-                markerOptions.position(new LatLng(location.getLatitude(), location.getLongitude()));
-                markerOptions.title(currentCountryName);
-                //Log.i("COUNTRYNAME", currentCountryName);
-                startActivity(new Intent(this, MainActivity.class));
-
-                if (isInserted == true) {
-                    Toast.makeText(MainActivity.this, "You have not been in this country", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(this, "DATA NOT INSERTED", Toast.LENGTH_LONG).show();
+                if (doesExists == false) {
+                    boolean isInserted = myDb.insertCountry(location.getLatitude(), location.getLongitude(), currentCountryName);
+                    MarkerOptions markerOptions = new MarkerOptions();
+                    markerOptions.position(new LatLng(location.getLatitude(), location.getLongitude()));
+                    markerOptions.title(currentCountryName);
+                    //Log.i("COUNTRYNAME", currentCountryName);
+                    startActivity(new Intent(this, MainActivity.class));
+                    Log.i("Exists 5", String.valueOf(doesExists));
+                    if (isInserted == true) {
+                        Toast.makeText(MainActivity.this, "You have not been in this country", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(this, "DATA NOT INSERTED", Toast.LENGTH_LONG).show();
+                    }
+                    res.moveToFirst();
                 }
-                res.moveToFirst();
             }
         }
     }
