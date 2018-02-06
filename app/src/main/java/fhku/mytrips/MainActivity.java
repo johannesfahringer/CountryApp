@@ -5,13 +5,16 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Camera;
 import android.location.Address;
 import android.location.Geocoder;
 import android.net.Uri;
 import android.os.Environment;
+import android.os.Parcelable;
 import android.provider.MediaStore;
 import android.provider.Settings;
+import android.support.v4.content.FileProvider;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.Manifest;
@@ -39,6 +42,7 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 
 
 public class MainActivity extends AppCompatActivity implements LocationListener, OnMapReadyCallback {
@@ -59,6 +63,9 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     boolean doesExists;
     static final int REQUEST_IMAGE_CAPTURE = 1;
     String mCurrentPhotoPath;
+    int currentTag;
+    String countryNameTag;
+    static final int REQUEST_TAKE_PHOTO = 1;
 
 
 
@@ -84,6 +91,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                 startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
             }
         });
+        checkCameraPermission();
     }
 
     public void startGPS() {
@@ -100,7 +108,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                 Log.i("LOCATION", "permission granted");
-                lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 10, 20000, this);
+                lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 20000, this);
             } else {
                 requestPermissions(new String[] {
                         Manifest.permission.ACCESS_FINE_LOCATION
@@ -199,6 +207,8 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                                                          Intent value = new Intent(getApplicationContext(), MainActivity.class);
                                                          value.putExtra("tag1", (int) marker.getTag());
                                                          Log.i("MarkerTag", String.valueOf(markerTag));
+                                                         currentTag = (int) marker.getTag();
+                                                         countryNameTag = marker.getTitle();
 
                                                          dialog.setButton(AlertDialog.BUTTON_NEGATIVE, "INFO", new DialogInterface.OnClickListener() {
                                                              public void onClick(DialogInterface dialog, int which) {
@@ -214,14 +224,17 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
 
                                                          dialog.setButton(AlertDialog.BUTTON_NEUTRAL, "Bildergalerie", new DialogInterface.OnClickListener() {
                                                              public void onClick(DialogInterface dialog, int which) {
+                                                                 Intent gallery = new Intent(getApplicationContext(), Gallery.class);
+                                                                 gallery.putExtra("gallery", countryNameArray[markerTag]);
+                                                                 startActivity(gallery);
                                                                  dialog.dismiss();
                                                              }
                                                          });
 
                                                          dialog.setButton(AlertDialog.BUTTON_POSITIVE, "Kamera", new DialogInterface.OnClickListener() {
                                                              public void onClick(DialogInterface dialog, int which) {
-                                                                     checkCameraPermission();
-                                                                     takePhoto();
+                                                                 checkCameraPermission();
+                                                                 takePhoto();
 
 
 
@@ -243,48 +256,57 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         }
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
-            Log.i("KKKKK","kkkkksssssss");
-            Bundle extras = data.getExtras();
-            Bitmap imageBitmap = (Bitmap) extras.get("data");
-            ImageView view = new ImageView(getApplicationContext());
-            Log.i("KLÖSDJFSKDLS", String.valueOf(view));
-            RelativeLayout relativeLayout = findViewById(R.id.layout);
-            relativeLayout.addView(view);
-            view.setImageBitmap(imageBitmap);
-            if (getIntent()!=null) {
-                Log.i("INTENT", String.valueOf(getIntent()));
-                int tag = getIntent().getIntExtra("tag1", -1);
-                Log.i("tag", String.valueOf(tag));
-            }
-        }
-    }
 
-    private File createImageFile(int tag) throws IOException {
+    private File createImageFile(int tag, String currentCountry) throws IOException {
         // Create an image file name
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-        String imageFileName = "JPEG_" + timeStamp + "_" + tag;
+        String imageFileName = "JPEG_" + timeStamp + "_" + tag + "_" +currentCountry;
+        Log.i("ImageFileName", imageFileName);
         File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
         File image = File.createTempFile(
                 imageFileName,  /* prefix */
                 ".jpg",         /* suffix */
                 storageDir      /* directory */
-
         );
 
         // Save a file: path for use with ACTION_VIEW intents
         mCurrentPhotoPath = image.getAbsolutePath();
+        Log.i("CurrentfotoPath", mCurrentPhotoPath);
+        Log.i("Image", image.toString());
         return image;
     }
 
+
     private void takePhoto() {
         Intent takePhotoIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        String photoPath = mCurrentPhotoPath;
+
+
         if (takePhotoIntent.resolveActivity(getPackageManager()) != null) {
-            startActivityForResult(takePhotoIntent, REQUEST_IMAGE_CAPTURE);
+            File photoFile=null;
+            i=0;
+                try {
+                    Log.i("Durchlauf", String.valueOf(i));
+                    i++;
+                photoFile=createImageFile(currentTag, countryNameTag);
+
+
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            if (photoFile!=null){
+                Uri photoUri = FileProvider.getUriForFile(this, "com.example.android.fileprovider", photoFile);
+                Log.i("URI", String.valueOf(photoUri));
+                Log.i("INTENT",takePhotoIntent.toString() );
+                takePhotoIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri);
+                startActivityForResult(takePhotoIntent, REQUEST_TAKE_PHOTO);
+            }
         }
     }
+
+
+
 
     public void onLocationChanged(Location location) {
         if (getCountryNames(location.getLongitude(), location.getLatitude()).equals("Ocean")) {
@@ -297,9 +319,9 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                 String currentCountryName = getCountryNames(location.getLongitude(), location.getLatitude());
                 Log.i("Current Country Name", currentCountryName);
                 //Prüft ob ein Land bereits exestiert oder nicht.
-
                 Log.i("Exists 1", String.valueOf(doesExists));
-                res.moveToFirst();
+                doesExists=false;
+                res.moveToPosition(0);
 
 
    /*Wenn bei Änderung der Lokation noch kein Eintrag in der Datenbank vorhanden ist,
@@ -309,7 +331,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     * aktuelle Ländername der im String currentCountryName gespeichert wurde.
     * Danach wird der Marker an der aktuellen Position mit dem Titel des aktuellen Ländernamens.
     * Und ein Log wird ausgegeben mit Längen und Breitengrade.*/
-                if (res.getCount() == 0) {
+               /*if (res.getCount() == 0) {
                     myDb.insertCountry(location.getLatitude(), location.getLongitude(), currentCountryName);
                     MarkerOptions markerOptions = new MarkerOptions();
                     markerOptions.position(new LatLng(location.getLatitude(), location.getLongitude()));
@@ -319,29 +341,38 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                     Log.i("Exists 2", String.valueOf(doesExists));
                     startActivity(new Intent(this, MainActivity.class));
 
-                }
+
+                }*/
 
    /*Solange er Einträge findet geht der der Cursor durch jede Zeile und überprüft ob der Name
    des Landes der aktuellen Position bereits in der Datenbank vorhanden ist. Wenn dies der
    Fall ist setzt er "doesExists" auf "true" geht mit dem Curor wieder zur ersten Zeile und
    bricht die while Schleife ab.*/
-                if (res.getCount() > 0) {
-                    while (res.moveToNext()) {
-                        Log.i("Current country", String.valueOf(currentCountryName));
-                        Log.i("Cursor String", String.valueOf(res.getString(3)));
-                        if (currentCountryName.equals(res.getString(3))) {
+                    if (res.getCount()>0) {
+                        Log.i("COUNT", String.valueOf(res.getCount()));
+                        res.moveToPosition(0);
+                        Log.i("CURSOROBJ", String.valueOf(res.getPosition()));
+                        if (currentCountryName.equals(res.getString(3))){
+                            doesExists=true;
+                        }
+                        while (res.moveToNext()) {
+                            Log.i("Current country", String.valueOf(currentCountryName));
+                            Log.i("Cursor String", String.valueOf(res.getString(3)));
+                            if (currentCountryName.equals(res.getString(3))) {
 
-                            // boolean isInserted = myDb.insertCountry(location.getLatitude(), location.getLongitude(), currentCountryName);
-                            doesExists = true;
-                            Log.i("Exists 3", String.valueOf(doesExists));
-                            res.moveToFirst();
-                            break;
+                                // boolean isInserted = myDb.insertCountry(location.getLatitude(), location.getLongitude(), currentCountryName);
+                                doesExists = true;
+                                Log.i("Exists 3", String.valueOf(doesExists));
+                                res.moveToPosition(0);
+                                break;
+                            }
                         }
                     }
                     Log.i("Exists 4", String.valueOf(doesExists));
 
    /* Wenn der aktuelle Ländername der aktuellen Position noch nicht vorhanden ist, dann wird der Name inklusive
     Längen- und Breitengrade in die Datenbank gespeichert, ein Marker gesetzt und die Activity wird neu geladen.*/
+
                     if (doesExists == false) {
                         boolean isInserted = myDb.insertCountry(location.getLatitude(), location.getLongitude(), currentCountryName);
                         MarkerOptions markerOptions = new MarkerOptions();
@@ -355,13 +386,11 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                         } else {
                             Toast.makeText(this, "DATA NOT INSERTED", Toast.LENGTH_LONG).show();
                         }
-                        res.moveToFirst();
+                        res.moveToPosition(0);
                     }
                 }
             }
         }
-    }
-
 
  /*Countryname wird durch den Geocoder geholt dafür muss man, Longitude und Latitude übergeben*/
     public String getCountryNames(double longitude, double latitude) {
